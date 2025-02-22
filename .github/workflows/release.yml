@@ -10,19 +10,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
 
       - name: Use Node
         uses: actions/setup-node@v3
         with:
-          node-version: '16'  # 必要に応じて変更
+          node-version: 'latest'
 
       - name: Install dependencies
         run: npm install
 
       - name: Compile TypeScript
         run: npm run compile
-        # 拡張機能のビルドコマンドがあれば (例: `npm run build`) そちらを使用
 
       - name: Install vsce
         run: npm install -g vsce
