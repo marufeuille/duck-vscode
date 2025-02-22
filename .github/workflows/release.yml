@@ -1,3 +1,42 @@
+name: Build and Package VSIX
+
+on:
+  push:
+    tags:
+      - 'v*'  # 例えば v0.1.0 のように "v" で始まるタグをトリガーにする
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+
+      - name: Use Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '16'  # 必要に応じて変更
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Compile TypeScript
+        run: npm run compile
+        # 拡張機能のビルドコマンドがあれば (例: `npm run build`) そちらを使用
+
+      - name: Install vsce
+        run: npm install -g vsce
+
+      - name: Package extension
+        run: vsce package
+        # 成功すると "<extension-name>-<version>.vsix" ファイルが生成される
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: vsix-artifact
+          path: '*.vsix'
+
 - name: Create GitHub Release
   uses: actions/create-release@v1
   with:
