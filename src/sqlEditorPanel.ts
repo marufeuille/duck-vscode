@@ -7,12 +7,10 @@ export class SqlEditorPanel {
     private readonly _extensionUri: vscode.Uri;
     private _disposables: vscode.Disposable[] = [];
 
-    // ここで実際に SQL を実行
     public async runQuery(sql: string) {
         const client = new DuckDBClient();
         try {
             const result = await client.execute(sql);
-            // 実行結果を Webview に送信
             this._panel.webview.postMessage({ command: 'queryResult', result });
         } catch (err: any) {
             this._panel.webview.postMessage({ command: 'queryError', message: err.message });
@@ -24,7 +22,6 @@ export class SqlEditorPanel {
             ? vscode.window.activeTextEditor.viewColumn
             : undefined;
 
-        // 既にパネルが存在する場合
         if (SqlEditorPanel.currentPanel) {
             SqlEditorPanel.currentPanel._panel.reveal(column);
             // initialQuery があれば実行
@@ -34,7 +31,6 @@ export class SqlEditorPanel {
             return;
         }
 
-        // 新しいパネルを作成
         const panel = vscode.window.createWebviewPanel(
             'sqlEditor',
             'DuckDB SQL Editor',
@@ -46,7 +42,6 @@ export class SqlEditorPanel {
 
         SqlEditorPanel.currentPanel = new SqlEditorPanel(panel, extensionUri);
 
-        // パネル生成直後にもクエリを実行したい場合
         if (initialQuery) {
 			SqlEditorPanel.currentPanel.setEditorValue(initialQuery);
             SqlEditorPanel.currentPanel.runQuery(initialQuery);
@@ -54,7 +49,6 @@ export class SqlEditorPanel {
     }
 	
     public setEditorValue(sql: string) {
-        // Webview に対して「エディタの内容を更新」メッセージを送る
         this._panel.webview.postMessage({ command: 'setEditorValue', sql });
     }
 
@@ -62,10 +56,8 @@ export class SqlEditorPanel {
         this._panel = panel;
         this._extensionUri = extensionUri;
 
-        // WebviewのHTML
         this._update();
 
-        // Webviewからのメッセージ受信（ユーザーがエディタから実行ボタンを押した場合）
         this._panel.webview.onDidReceiveMessage(
             async message => {
                 switch (message.command) {
@@ -90,7 +82,6 @@ export class SqlEditorPanel {
     public dispose() {
         SqlEditorPanel.currentPanel = undefined;
 
-        // すべてのディスポーザブルを破棄
         this._panel.dispose();
         while (this._disposables.length) {
             const x = this._disposables.pop();
@@ -105,10 +96,7 @@ export class SqlEditorPanel {
         let htmlContent = await vscode.workspace.fs.readFile(htmlPath);
         let html = htmlContent.toString();
 
-        // media フォルダの URI を Webview 用に変換
         const baseUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media'));
-        // プレースホルダーを置換
-
         return html;
     }
 }

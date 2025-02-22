@@ -13,11 +13,9 @@ export function activate(context: vscode.ExtensionContext) {
         'extension.runSqlFileInDuckDB',
         async (uri: vscode.Uri) => {
             try {
-                // ファイルの内容を読み込み
                 const sqlFilePath = uri.fsPath; 
                 const content = await fs.readFile(sqlFilePath, 'utf8');
 
-                // SQL エディタパネルを開き、読み込んだ SQL を実行
                 SqlEditorPanel.createOrShow(context.extensionUri, content);
             } catch (error) {
                 vscode.window.showErrorMessage(`Failed to read SQL file: ${error}`);
