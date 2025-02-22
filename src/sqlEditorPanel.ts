@@ -63,7 +63,7 @@ export class SqlEditorPanel {
         this._extensionUri = extensionUri;
 
         // WebviewのHTML
-        this._panel.webview.html = this._getHtmlForWebview(this._panel.webview);
+        this._update();
 
         // Webviewからのメッセージ受信（ユーザーがエディタから実行ボタンを押した場合）
         this._panel.webview.onDidReceiveMessage(
@@ -83,6 +83,10 @@ export class SqlEditorPanel {
         this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
     }
 
+    private async _update() {
+        this._panel.webview.html = await this._getHtmlForWebview(this._panel.webview);
+    }
+
     public dispose() {
         SqlEditorPanel.currentPanel = undefined;
 
@@ -96,88 +100,15 @@ export class SqlEditorPanel {
         }
     }
 
-    private _getHtmlForWebview(webview: vscode.Webview): string {
-        // シンプルなHTMLを返す
-        return /* html */ `
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-  <meta charset="UTF-8">
-  <title>DuckDB SQL Editor</title>
-  <!-- CodeMirror のCSS -->
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" />
-  <style>
-    body { font-family: sans-serif; margin: 0; padding: 10px; }
-    #editor { height: 150px; border: 1px solid #ccc; }
-    #result { margin-top: 20px; }
-    /* CodeMirror の生成するエディタに下部の余白を追加 */
-    .CodeMirror { 
-    	height: auto;
-    	min-height: 150px;
-	}
-    table { border-collapse: collapse; width: 100%; }
-    th, td { border: 1px solid #ccc; padding: 5px; text-align: left; }
-    button { margin-top: 10px; padding: 5px 10px; }
-  </style>
-</head>
-<body>
-  <h2>DuckDB SQL Editor</h2>
-  <div id="editor"></div>
-  <button id="executeBtn">実行</button>
-  <div id="result"></div>
+    private async _getHtmlForWebview(webview: vscode.Webview): Promise<string> {
+        const htmlPath = vscode.Uri.joinPath(this._extensionUri, 'media', 'editor.html');
+        let htmlContent = await vscode.workspace.fs.readFile(htmlPath);
+        let html = htmlContent.toString();
 
-  <!-- CodeMirror 本体 -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
-  <!-- SQL用モード -->
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js"></script>
-  <script>
-    const vscode = acquireVsCodeApi();
-    // クエリ実行関数
-    function executeQuery() {
-      const sql = editor.getValue();
-      vscode.postMessage({ command: 'executeQuery', sql });
-    }
+        // media フォルダの URI を Webview 用に変換
+        const baseUri = webview.asWebviewUri(vscode.Uri.joinPath(this._extensionUri, 'media'));
+        // プレースホルダーを置換
 
-    // CodeMirrorエディタの初期化、extraKeysでCmd+Enter/Ctrl+Enterを設定
-    const editor = CodeMirror(document.getElementById('editor'), {
-      mode: 'text/x-sql',
-      lineNumbers: true,
-      value: "select * from 'data/sample.csv';",
-      extraKeys: {
-        "Cmd-Enter": executeQuery,
-        "Ctrl-Enter": executeQuery
-      }
-    });
-
-    document.getElementById('executeBtn').addEventListener('click', executeQuery);
-
-	window.addEventListener('message', event => {
-		const message = event.data;
-		const resultDiv = document.getElementById('result');
-		switch (message.command) {
-			case 'queryResult':
-				const result = message.result;
-				let html = '<h3>クエリ結果</h3>';
-				html += '<table>';
-				html += '<tr>' + result.columns.map(col => '<th>' + col + '</th>').join('') + '</tr>';
-				result.rows.forEach(row => {
-					html += '<tr>' + row.map(cell => '<td>' + cell + '</td>').join('') + '</tr>';
-				});
-				html += '</table>';
-				resultDiv.innerHTML = html;
-				break;
-			case 'queryError':
-				resultDiv.innerHTML = '<span style="color:red;">' + message.message + '</span>';
-				break;
-			case 'setEditorValue':
-				// エディタの内容を更新
-				editor.setValue(message.sql);
-				break;
-		}
-	});
-  </script>
-</body>
-</html>
-        `;
+        return html;
     }
 }

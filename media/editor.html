@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>DuckDB SQL Editor</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" />
+  <style>
+    body { font-family: sans-serif; margin: 0; padding: 10px; }
+    #editor {
+      border: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .CodeMirror {
+      height: auto;
+      min-height: 150px;
+    }
+    #result {
+      margin-top: 20px;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    th, td {
+      border: 1px solid #ccc;
+      padding: 5px;
+      text-align: left;
+    }
+    button {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: #007acc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #005a9e;
+    }
+  </style>
+</head>
+<body>
+  <h2>DuckDB SQL Editor</h2>
+  <div id="editor"></div>
+  <button id="executeBtn">実行 (Cmd/Ctrl+Enter)</button>
+  <div id="result"></div>
+  
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js"></script>
+  <script>
+    const vscode = acquireVsCodeApi();
+
+    function executeQuery() {
+      const sql = editor.getValue();
+      vscode.postMessage({ command: 'executeQuery', sql });
+    }
+
+    const editor = CodeMirror(document.getElementById('editor'), {
+      mode: 'text/x-sql',
+      lineNumbers: true,
+      value: "select 'Hello from the editor';",
+      extraKeys: {
+        "Cmd-Enter": executeQuery,
+        "Ctrl-Enter": executeQuery
+      }
+    });
+
+    document.getElementById('executeBtn').addEventListener('click', executeQuery);
+
+    window.addEventListener('message', event => {
+      const message = event.data;
+      switch (message.command) {
+        case 'queryResult': {
+          const resultDiv = document.getElementById('result');
+          const result = message.result;
+          let html = '<h3>クエリ結果</h3>';
+          html += '<table>';
+          html += '<tr>' + result.columns.map(col => `<th>${col}</th>`).join('') + '</tr>';
+          result.rows.forEach(row => {
+            html += '<tr>' + row.map(cell => `<td>${cell}</td>`).join('') + '</tr>';
+          });
+          html += '</table>';
+          resultDiv.innerHTML = html;
+          break;
+        }
+        case 'queryError': {
+          const resultDiv = document.getElementById('result');
+          resultDiv.innerHTML = `<span style="color:red;">${message.message}</span>`;
+          break;
+        }
+        case 'setEditorValue': {
+          editor.setValue(message.sql);
+          break;
+        }
+      }
+    });
+  </script>
+</body>
+</html>
