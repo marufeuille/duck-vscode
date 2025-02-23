@@ -3,30 +3,33 @@
 <head>
   <meta charset="UTF-8">
   <title>DuckDB SQL Editor</title>
+  <!-- CodeMirror と Chart.js のCDN -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.8.0/chart.min.js"></script>
   <style>
-    body { font-family: sans-serif; margin: 0; padding: 10px; }
+    /* 全体をダークテーマに合わせる */
+    body {
+      background-color: #1E1E1E;  /* VSCodeのダークテーマに近い背景色 */
+      color: #D4D4D4;             /* 文字色を明るめのグレーに */
+      margin: 0;
+      padding: 10px;
+      font-family: sans-serif;
+    }
+
+    /* エディタ部分 */
     #editor {
-      border: 1px solid #ccc;
+      border: 1px solid #555; /* ダーク背景に合うようにやや明るい線 */
       margin-bottom: 10px;
     }
     .CodeMirror {
+      background-color: #252526; /* ダークなエディタ背景 */
+      color: #D4D4D4;
       height: auto;
       min-height: 150px;
     }
-    #result {
-      margin-top: 20px;
-    }
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-    th, td {
-      border: 1px solid #ccc;
-      padding: 5px;
-      text-align: left;
-    }
-    button {
+
+    /* 実行ボタン */
+    #executeBtn {
       margin-top: 10px;
       padding: 8px 16px;
       font-size: 14px;
@@ -36,8 +39,90 @@
       border-radius: 4px;
       cursor: pointer;
     }
-    button:hover {
+    #executeBtn:hover {
       background-color: #005a9e;
+    }
+
+    /* タブ切替用のスタイル */
+    .tabs {
+      margin-top: 20px;
+    }
+    .tab-buttons {
+      margin-bottom: 10px;
+      /* タブボタンをまとめる領域の背景（任意で少し暗めに） */
+      background-color: #1E1E1E;
+      padding: 0;
+    }
+    .tab-buttons button {
+      padding: 8px 16px;
+      margin-right: 4px;
+      border: none;
+      border-bottom: 2px solid transparent;
+      background-color: #3C3C3C;  /* ボタン背景 */
+      color: #CFCFCF;            /* ボタン文字色 */
+      cursor: pointer;
+    }
+    .tab-buttons button:hover {
+      background-color: #4A4A4A;
+    }
+    .tab-buttons button.active {
+      border-bottom: 2px solid #007acc;
+      background-color: #2D2D2D;
+      color: #fff;
+    }
+
+    .tab-content {
+      display: none;
+    }
+    .tab-content.active {
+      display: block;
+    }
+
+    /* テーブルのスタイル */
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-bottom: 20px;
+    }
+    th, td {
+      border: 1px solid #555;
+      padding: 5px;
+      text-align: left;
+    }
+    th {
+      background-color: #2D2D2D;
+    }
+
+    /* グラフ用ドロップダウン等 */
+    #graphOptions select {
+      padding: 4px 8px;
+      margin-right: 10px;
+      background-color: #3C3C3C;
+      color: #CFCFCF;
+      border: none;
+      border-radius: 4px;
+      outline: none;
+    }
+    #graphOptions select:focus {
+      outline: 2px solid #007acc;
+    }
+    #drawChartBtn {
+      margin-top: 10px;
+      padding: 8px 16px;
+      font-size: 14px;
+      background-color: #007acc;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #drawChartBtn:hover {
+      background-color: #005a9e;
+    }
+
+    /* グラフエリア */
+    #chartCanvas {
+      background-color: #1E1E1E; /* グラフ背景が透過の場合でも違和感が出ないよう同色 */
     }
   </style>
 </head>
@@ -45,37 +130,178 @@
   <h2>DuckDB SQL Editor</h2>
   <div id="editor"></div>
   <button id="executeBtn">実行 (Cmd/Ctrl+Enter)</button>
-  <div id="result"></div>
-  
+
+  <div class="tabs">
+    <div class="tab-buttons">
+      <button id="tableTabBtn" class="active">結果テーブル</button>
+      <button id="graphTabBtn">グラフ</button>
+    </div>
+    <div id="tableTab" class="tab-content active">
+      <div id="result"></div>
+    </div>
+    <div id="graphTab" class="tab-content">
+      <div id="graphOptions">
+        <label for="xAxisSelect">X軸:</label>
+        <select id="xAxisSelect"></select>
+        <label for="yAxisSelect">Y軸:</label>
+        <select id="yAxisSelect"></select>
+        <label for="graphTypeSelect">グラフ種類:</label>
+        <select id="graphTypeSelect">
+          <option value="line">線グラフ</option>
+          <option value="bar">棒グラフ</option>
+          <option value="scatter">散布図</option>
+        </select>
+        <button id="drawChartBtn">グラフ描画</button>
+      </div>
+      <canvas id="chartCanvas"></canvas>
+    </div>
+  </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/mode/sql/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.8.0/chart.min.js"></script>
   <script>
     const vscode = acquireVsCodeApi();
 
+    // クエリ実行関数
     function executeQuery() {
       const sql = editor.getValue();
       vscode.postMessage({ command: 'executeQuery', sql });
     }
 
+    // CodeMirrorエディタ初期化
     const editor = CodeMirror(document.getElementById('editor'), {
       mode: 'text/x-sql',
       lineNumbers: true,
-      value: "select 'Hello from the editor';",
+      value: "select * from 'data/sample.csv';",
       extraKeys: {
         "Cmd-Enter": executeQuery,
         "Ctrl-Enter": executeQuery
       }
     });
-
     document.getElementById('executeBtn').addEventListener('click', executeQuery);
 
+    // タブ切替の処理
+    const tableTabBtn = document.getElementById('tableTabBtn');
+    const graphTabBtn = document.getElementById('graphTabBtn');
+    const tableTab = document.getElementById('tableTab');
+    const graphTab = document.getElementById('graphTab');
+    tableTabBtn.addEventListener('click', () => {
+      tableTabBtn.classList.add('active');
+      graphTabBtn.classList.remove('active');
+      tableTab.classList.add('active');
+      graphTab.classList.remove('active');
+    });
+    graphTabBtn.addEventListener('click', () => {
+      graphTabBtn.classList.add('active');
+      tableTabBtn.classList.remove('active');
+      graphTab.classList.add('active');
+      tableTab.classList.remove('active');
+    });
+
+    // Chart.js 用変数
+    let chart = null;
+
+    // 結果からドロップダウン更新
+    function updateAxisSelectors(columns) {
+      const xSelect = document.getElementById('xAxisSelect');
+      const ySelect = document.getElementById('yAxisSelect');
+      xSelect.innerHTML = '';
+      ySelect.innerHTML = '';
+      columns.forEach(col => {
+        const option1 = document.createElement('option');
+        option1.value = col;
+        option1.textContent = col;
+        xSelect.appendChild(option1);
+
+        const option2 = document.createElement('option');
+        option2.value = col;
+        option2.textContent = col;
+        ySelect.appendChild(option2);
+      });
+    }
+
+    // グラフ描画処理
+    function drawChart(result) {
+      const xAxis = document.getElementById('xAxisSelect').value;
+      const yAxis = document.getElementById('yAxisSelect').value;
+      const graphType = document.getElementById('graphTypeSelect').value;
+
+      const xIndex = result.columns.indexOf(xAxis);
+      const yIndex = result.columns.indexOf(yAxis);
+      if (xIndex === -1 || yIndex === -1) {
+        alert('正しい軸が選択されていません');
+        return;
+      }
+
+      const labels = result.rows.map(row => row[xIndex]);
+      let data, dataset;
+
+      if (graphType === 'scatter') {
+        // 散布図
+        data = result.rows.map(row => ({
+          x: row[xIndex],
+          y: Number(row[yIndex])
+        }));
+        dataset = {
+          label: `${yAxis} vs ${xAxis}`,
+          data: data,
+          backgroundColor: 'rgba(0, 122, 204, 0.5)',
+          borderColor: 'rgba(0, 122, 204, 1)',
+          showLine: false,
+        };
+      } else {
+        // 線グラフ or 棒グラフ
+        data = result.rows.map(row => Number(row[yIndex]));
+        dataset = {
+          label: `${yAxis} vs ${xAxis}`,
+          data: data,
+          backgroundColor: 'rgba(0, 122, 204, 0.5)',
+          borderColor: 'rgba(0, 122, 204, 1)',
+          fill: false,
+        };
+      }
+
+      if (chart) {
+        chart.destroy();
+      }
+
+      const ctx = document.getElementById('chartCanvas').getContext('2d');
+      chart = new Chart(ctx, {
+        type: graphType, // 'line', 'bar', 'scatter'
+        data: {
+          labels: graphType === 'scatter' ? [] : labels,
+          datasets: [dataset]
+        },
+        options: {
+          scales: {
+            x: {
+              title: { display: true, text: xAxis },
+              type: graphType === 'scatter' ? 'linear' : 'category'
+            },
+            y: { title: { display: true, text: yAxis } }
+          }
+        }
+      });
+    }
+
+    document.getElementById('drawChartBtn').addEventListener('click', () => {
+      if (window.latestResult) {
+        drawChart(window.latestResult);
+      } else {
+        alert('まずクエリを実行して結果を取得してください');
+      }
+    });
+
+    // メッセージ受信処理
     window.addEventListener('message', event => {
       const message = event.data;
       switch (message.command) {
         case 'queryResult': {
           const resultDiv = document.getElementById('result');
           const result = message.result;
+          window.latestResult = result;  // 後でグラフ描画用に保持
+
           let html = '<h3>クエリ結果</h3>';
           html += '<table>';
           html += '<tr>' + result.columns.map(col => `<th>${col}</th>`).join('') + '</tr>';
@@ -84,6 +310,9 @@
           });
           html += '</table>';
           resultDiv.innerHTML = html;
+
+          // ドロップダウン更新
+          updateAxisSelectors(result.columns);
           break;
         }
         case 'queryError': {
