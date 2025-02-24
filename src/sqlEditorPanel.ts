@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
-import { DuckDBClient } from './duckdbClient';
+import { DuckDBService } from './duckdbService';
+import { promises as fs } from 'fs';
 
 export class SqlEditorPanel {
     public static currentPanel: SqlEditorPanel | undefined;
@@ -8,13 +9,17 @@ export class SqlEditorPanel {
     private _disposables: vscode.Disposable[] = [];
 
     public async runQuery(sql: string) {
-        const client = new DuckDBClient();
+        const duckDBService = new DuckDBService();
         try {
-            const result = await client.execute(sql);
+            const result = await duckDBService.executeSql(sql);
             this._panel.webview.postMessage({ command: 'queryResult', result });
         } catch (err: any) {
             this._panel.webview.postMessage({ command: 'queryError', message: err.message });
         }
+    }
+
+    public postMessage(message: any) {
+        this._panel.webview.postMessage(message);
     }
 
     public static createOrShow(extensionUri: vscode.Uri, initialQuery?: string) {
@@ -65,6 +70,9 @@ export class SqlEditorPanel {
                         const sql = message.sql;
                         this.runQuery(sql);
                         break;
+                    case 'saveFile':
+                        this.saveFile(message.sql);
+                        break;
                 }
             },
             undefined,
@@ -77,6 +85,26 @@ export class SqlEditorPanel {
 
     private async _update() {
         this._panel.webview.html = await this._getHtmlForWebview(this._panel.webview);
+    }
+
+    private async saveFile(sql: string) {
+        const options: vscode.SaveDialogOptions = {
+            saveLabel: "Save SQL File",
+            filters: {
+                'SQL Files': ['sql'],
+                'All Files': ['*']
+            }
+        };
+
+        const fileUri = await vscode.window.showSaveDialog(options);
+        if (fileUri) {
+            try {
+                await fs.writeFile(fileUri.fsPath, sql, 'utf8');
+                vscode.window.showInformationMessage('SQLファイルが保存されました。');
+            } catch (error) {
+                vscode.window.showErrorMessage(`ファイルの保存に失敗しました: ${error}`);
+            }
+        }
     }
 
     public dispose() {
