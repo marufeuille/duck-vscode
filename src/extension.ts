@@ -4,10 +4,23 @@ import { DuckDBService } from './duckdbService';
 import { SqlEditorPanel } from './sqlEditorPanel';
 
 export function activate(context: vscode.ExtensionContext) {
+    let disposable = vscode.commands.registerCommand('extension.openDuckSqlEditor', () => {
+        SqlEditorPanel.createOrShow(context.extensionUri);
+    });
+    context.subscriptions.push(disposable);
     const runSqlFileCommand = vscode.commands.registerCommand(
         'extension.runSqlFileInDuckDB',
         async (uri: vscode.Uri) => {
             console.log("start command");
+            
+            const workspaceFolders = vscode.workspace.workspaceFolders;
+            if (!workspaceFolders) {
+                vscode.window.showErrorMessage('No workspace is open.');
+                return;
+            }
+    
+            const workspacePath = workspaceFolders[0].uri.fsPath;
+            process.chdir(workspacePath);
             try {
                 const sqlFilePath = uri.fsPath;
                 const content = await fs.readFile(sqlFilePath, 'utf8');
