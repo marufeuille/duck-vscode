@@ -27,5 +27,13 @@ jobs:
     - name: Compile TypeScript
       run: npm run compile
 
+    - name: Start Xvfb
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xvfb
+        Xvfb :99 &
+
     - name: Run VSCode tests
+      env:
+        DISPLAY: :99
       run: npm run test:vscode
