@@ -5,7 +5,7 @@
   "publisher": "marufeuille",
   "version": "0.0.1",
   "repository": {
-  " type": "git",
+    " type": "git",
     "url": "git://github.com/marufeuille/duckcode.git"
   },
   "engines": {
@@ -45,21 +45,26 @@
     "watch": "tsc -watch -p ./",
     "pretest": "npm run compile && npm run lint",
     "lint": "eslint src",
-    "test": "vscode-test"
+    "test": "mocha --require ts-node/register out/**/*.test.js",
+    "test:integration": "mocha --timeout 10000 --require ts-node/register src/**.test.ts",
+    "test:vscode": "node ./out/test/runTest.js"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "20.x",
+    "@types/sinon": "^17.0.4",
     "@types/vscode": "^1.96.0",
     "@typescript-eslint/eslint-plugin": "^8.22.0",
     "@typescript-eslint/parser": "^8.22.0",
     "@vscode/test-cli": "^0.0.10",
     "@vscode/test-electron": "^2.4.1",
     "eslint": "^9.19.0",
+    "ts-node": "^10.9.2",
     "typescript": "^5.7.3",
     "vsce": "^2.15.0"
   },
   "dependencies": {
-    "duckdb": "^1.2.0"
+    "duckdb": "^1.2.0",
+    "sinon": "^19.0.2"
   }
 }
