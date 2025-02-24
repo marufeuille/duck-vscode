@@ -11,4 +11,4 @@
 ## 使い方
 
 - [こちら](https://github.com/marufeuille/duckcode/releases)から最新のvsixをダウンロードしてください
-- [こちら]の記載に従ってインストールしてください
+- [こちら](https://learn.microsoft.com/ja-jp/visualstudio/ide/finding-and-using-visual-studio-extensions?view=vs-2022#install-without-using-extension-manager)の記載に従ってインストールしてください
