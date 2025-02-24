@@ -7,25 +7,27 @@
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.5/codemirror.min.css" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.8.0/chart.min.js"></script>
   <style>
-    /* 全体をダークテーマに合わせる */
+    /* ダークテーマ全体設定 */
     body {
-      background-color: #1E1E1E;  /* VSCodeのダークテーマに近い背景色 */
-      color: #D4D4D4;             /* 文字色を明るめのグレーに */
+      background-color: #1E1E1E;
+      color: #D4D4D4;
       margin: 0;
       padding: 10px;
       font-family: sans-serif;
     }
-
-    /* エディタ部分 */
     #editor {
-      border: 1px solid #555; /* ダーク背景に合うようにやや明るい線 */
+      border: 1px solid #555;
       margin-bottom: 10px;
     }
     .CodeMirror {
-      background-color: #252526; /* ダークなエディタ背景 */
+      background-color: #252526;
       color: #D4D4D4;
       height: auto;
       min-height: 150px;
+    }
+    /* カーソルを白系にして見やすくする */
+    .CodeMirror div.CodeMirror-cursor {
+      border-left: 2px solid #ffffff !important;
     }
 
     /* 実行ボタン */
@@ -49,7 +51,6 @@
     }
     .tab-buttons {
       margin-bottom: 10px;
-      /* タブボタンをまとめる領域の背景（任意で少し暗めに） */
       background-color: #1E1E1E;
       padding: 0;
     }
@@ -58,8 +59,8 @@
       margin-right: 4px;
       border: none;
       border-bottom: 2px solid transparent;
-      background-color: #3C3C3C;  /* ボタン背景 */
-      color: #CFCFCF;            /* ボタン文字色 */
+      background-color: #3C3C3C;
+      color: #CFCFCF;
       cursor: pointer;
     }
     .tab-buttons button:hover {
@@ -70,7 +71,6 @@
       background-color: #2D2D2D;
       color: #fff;
     }
-
     .tab-content {
       display: none;
     }
@@ -119,10 +119,8 @@
     #drawChartBtn:hover {
       background-color: #005a9e;
     }
-
-    /* グラフエリア */
     #chartCanvas {
-      background-color: #1E1E1E; /* グラフ背景が透過の場合でも違和感が出ないよう同色 */
+      background-color: #1E1E1E;
     }
   </style>
 </head>
@@ -320,6 +318,7 @@
           resultDiv.innerHTML = `<span style="color:red;">${message.message}</span>`;
           break;
         }
+        // ここでエディタを更新する
         case 'setEditorValue': {
           editor.setValue(message.sql);
           break;
