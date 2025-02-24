@@ -1,6 +1,6 @@
 # duckcode
 
-![duckcode](image.png)
+![duckcode](img/image.png)
 
 ## これは何？
 
